@@ -1,16 +1,13 @@
 # AI-Native Compliance Intelligence Engine
 
 ## Overview
-Prototype compliance engine that ingests financial events and stores them for behavioral risk analysis.
+Prototype compliance engine that ingests financial events and stores them for behavioral risk analysis. It replaces alerts, and
+proactively monitors account activities for some behavioural signals like transactions, profile change and new login, produces a risk narrative and recommends actions with confidence score.
 
-It replaces alerts, and
-proactively monitors account activities, aggregates behavioral signals, produces a risk narrative and recommends actions with confidence score
-
-The human in the loop:
+### The human in the loop:
 Approves escalation, freeze accounts if necessary, files regulatory reports and overrides unclear cases
 
-What breaks first at scale:
-From the AI:
+### What breaks first at scale:
 False positive amplification, model drift, and accumulated bias
 
 ## Tech Stack
