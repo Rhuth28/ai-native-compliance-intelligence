@@ -9,6 +9,9 @@ from sqlalchemy.orm import Session
 from .database import engine, SessionLocal, Base
 from .models import Event
 from .schemas import EventCreate
+from typing import List
+from .signals import build_signals
+from .signal_schemas import SignalOut
 
 # Create DB tables
 Base.metadata.create_all(bind=engine)
@@ -49,3 +52,8 @@ def create_event(event: EventCreate, db: Session = Depends(get_db)):
         "message": "Event stored successfully",
         "event_id": new_event.id
     }
+
+# Checks and computes all account signals based on recent events
+@app.get("/signals/{account_id}", response_model=List[SignalOut])
+def get_signals(account_id: str, db: Session = Depends(get_db)):
+    return build_signals(db, account_id)

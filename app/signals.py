@@ -15,7 +15,7 @@ from .models import Event
 # Define thresholds
 LARGE_TXN_THRESHOLD = 3000 # This is in CAD
 LOOKBACK_DAYS = 30  # How far back in (days) the AI should check for
-PROFILE_CHANGE_WINDOW = 24  # Check if profile was changed (24 hours)
+PROFILE_CHANGE_WINDOW_HOURS = 24  # Check if profile was changed (24 hours)
 
 
 # Define a helper function to read from payload
@@ -41,7 +41,7 @@ def build_signals(db: Session, account_id: str) -> List[Dict[str, Any]]:
 
     # Track known devices and counterparties seen hostorically (within Lookback period of 30 days)
     known_devices: Set[str] = set()
-    known_counterparties: Set[str] = set()
+    known_recipients: Set[str] = set()
 
     # Track when profile was last changed
     most_recent_profile_change: Tuple[datetime | None, int | None] = (None, None)
@@ -59,8 +59,8 @@ def build_signals(db: Session, account_id: str) -> List[Dict[str, Any]]:
                 if device_id not in known_devices:
                     signals.append({
                         "signal_name": "NEW_DEVICE_LOGIN",
-                        "why_it_fired": f"Login from a new device id: '{device_id}' not seen in the last '{LOOKBACK_DAYS}'",
-                        "evidence_event_ids": [e.id]                        
+                        "why_it_fired": f"Login from a new device id: '{device_id}' not seen in the last '{LOOKBACK_DAYS}' days.",
+                        "evidence_event_ids": [e.id],                        
                     })
                     known_devices.add(device_id)  # Add it to known devices
 
@@ -72,8 +72,58 @@ def build_signals(db: Session, account_id: str) -> List[Dict[str, Any]]:
             signals.append({
                 "signal_name": "PROFILE_CHANGE",
                 "why_it_fired": f"Profile change detected (fields: {changed_fields})",
-                "evidence_event_ids": [e.id]                        
-            })            
+                "evidence_event_ids": [e.id],                        
+            })
             most_recent_profile_change = (e.created_at, e.id) # Store it for later correlation
 
+
+        # ----TRANSACTION SIGNALS----
+        if e.event_type == "transaction_posted":
+            amount = _safe_get(payload, "amount")
+            currency = _safe_get(payload, "currency", "CAD")
+            recipient = _safe_get(payload, "counterparty")
+
+
+            # Fire signal for large transactions
+            if isinstance (amount, (int, float)) and amount >= LARGE_TXN_THRESHOLD:
+                signals.append({
+                    "signal_name": "LARGE_TRANSACTION",
+                    "why_it_fired": f"Transaction amount {amount} {currency} exceeds threshold {LARGE_TXN_THRESHOLD} {currency}.",
+                    "evidence_event_ids": [e.id],  
+                })
+
+
+            # Fire signal for new payee + large transfers
+            if recipient and isinstance (amount, (int, float)):
+                if recipient not in known_recipients and amount >= LARGE_TXN_THRESHOLD:
+                    signals.append({
+                        "signal_name": "NEW_PAYEE_LARGE_TRANSFER",
+                        "why_it_fired": f"First transfer to recipient '{recipient}' and amount {amount} is greater than threshold {LARGE_TXN_THRESHOLD} {currency}",
+                        "evidence_event_ids": [e.id],  
+                     })
+                known_recipients.add(recipient)
+
+
+            # Fire signal for profile change + large transfers
+            last_pc_time, last_pc_event_id = most_recent_profile_change
+            if last_pc_time and last_pc_event_id:
+                window = timedelta(hours = PROFILE_CHANGE_WINDOW_HOURS)  # Check when last profile was changed
+                if e.created_at - last_pc_time <= window:
+                    signals.append({
+                        "signal_name": "PROFILE_CHANGE_AND_TRANSFER_24HR",
+                        "why_it_fired": f"A profile change occured within {PROFILE_CHANGE_WINDOW_HOURS}hrs before a transaction.",
+                        "evidence_event_ids": [last_pc_event_id, e.id],  
+                     })
+                known_recipients.add(recipient)
+
+
+    # Cleanup to remove duplicates, just in case
+    deduped = []
+    seen = set()
+    for s in signals:
+        key = (s["signal_name"], tuple(s["evidence_event_ids"]))
+        if key not in seen:
+            seen.add(key)
+            deduped.append(s)
+    return deduped
 
