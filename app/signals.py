@@ -93,7 +93,7 @@ def build_signals(db: Session, account_id: str) -> List[Dict[str, Any]]:
                 })
 
 
-            # Fire signal for new payee + large transfers
+            # Fire signal for new recipient + large transfers
             if recipient and isinstance (amount, (int, float)):
                 if recipient not in known_recipients and amount >= LARGE_TXN_THRESHOLD:
                     signals.append({

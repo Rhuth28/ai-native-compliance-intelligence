@@ -2,13 +2,13 @@
 
 ## Overview
 Prototype compliance engine that ingests financial events and stores them for behavioral risk analysis. It replaces alerts, and
-proactively monitors account activities for some behavioural signals like transactions, profile change and new login, produces a risk narrative and recommends actions with confidence score.
+proactively monitors account activities for some behavioural signals like large transactions, profile change and new login, produces a risk narrative, recommends actions with confidence score, and intelligently routes the cases.
 
 ### The human in the loop:
-Approves escalation, freeze accounts if necessary, files regulatory reports and overrides unclear cases
+Approves escalation, freeze accounts where necessary, files regulatory reports and overrides unclear cases
 
 ### What breaks first at scale:
-False positive amplification, model drift, and accumulated bias
+False positive amplification from the AI, model drift, policy changes, and accumulated bias
 
 ## Tech Stack
 - FastAPI
@@ -24,4 +24,6 @@ False positive amplification, model drift, and accumulated bias
 ## Current Features
 - Event ingestion endpoint
 - SQLite persistence
+- Transaction signals
+- Risk guardrails (deterministic)
 
