@@ -15,6 +15,9 @@ from .signal_schemas import SignalOut
 from .risk import assess_risk
 from .risk_schemas import RiskOut
 from .case import build_case
+from .rag import build_policy_query_from_case, retrieve_policy_snippets
+from .rag_schemas import PolicyContextOut
+
 
 
 # Create DB tables
@@ -74,3 +77,13 @@ def get_risk(account_id: str, db: Session = Depends(get_db)):
 @app.get("/case/{account_id}")
 def get_case(account_id: str, db: Session = Depends(get_db)):
     return build_case(db, account_id)
+
+
+#Retrieves RAG policies and return the policy snippets relevant to that case
+@app.get("/policy_context/{account_id}", response_model=PolicyContextOut)
+def get_policy_context(account_id: str, db: Session = Depends(get_db)):
+    case_obj = build_case(db, account_id)
+    query = build_policy_query_from_case(case_obj)
+    snippets = retrieve_policy_snippets(query=query, top_k=3)
+
+    return {"query": query, "top_k": 3, "snippets": snippets}
