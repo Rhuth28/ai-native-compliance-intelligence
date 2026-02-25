@@ -14,7 +14,7 @@ from .signals import build_signals
 from .signal_schemas import SignalOut
 from .risk import assess_risk
 from .risk_schemas import RiskOut
-
+from .case import build_case
 
 
 # Create DB tables
@@ -68,3 +68,9 @@ def get_signals(account_id: str, db: Session = Depends(get_db)):
 def get_risk(account_id: str, db: Session = Depends(get_db)):
     signals = build_signals(db, account_id)
     return assess_risk(account_id=account_id, signals=signals)
+
+
+#Endpoint that builds a full-investigation ready case and replaces alerts
+@app.get("/case/{account_id}")
+def get_case(account_id: str, db: Session = Depends(get_db)):
+    return build_case(db, account_id)
