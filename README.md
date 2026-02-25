@@ -20,10 +20,12 @@ False positive amplification from the AI, model drift, policy changes, and accum
 1. Create virtual environment
 2. pip install -r requirements.txt
 3. uvicorn app.main:app --reload
+4. Install langchain and chroma db for RAG
 
 ## Current Features
 - Event ingestion endpoint
 - SQLite persistence
 - Transaction signals
-- Risk guardrails (deterministic)
+- Risk guardrails for risk assessment (deterministic)
+
 
