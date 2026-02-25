@@ -2,3 +2,9 @@ fastapi
 uvicorn
 sqlalchemy
 pydantic
+langchain
+langchain-community
+langchain-openai
+langchain-chroma
+chromadb
+python-dotenv
