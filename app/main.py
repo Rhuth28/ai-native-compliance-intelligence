@@ -12,6 +12,10 @@ from .schemas import EventCreate
 from typing import List
 from .signals import build_signals
 from .signal_schemas import SignalOut
+from .risk import assess_risk
+from .risk_schemas import RiskOut
+
+
 
 # Create DB tables
 Base.metadata.create_all(bind=engine)
@@ -57,3 +61,10 @@ def create_event(event: EventCreate, db: Session = Depends(get_db)):
 @app.get("/signals/{account_id}", response_model=List[SignalOut])
 def get_signals(account_id: str, db: Session = Depends(get_db)):
     return build_signals(db, account_id)
+
+
+#Get risk for the account id - assign risk core + band
+@app.get("/risk/{account_id}", response_model=RiskOut)
+def get_risk(account_id: str, db: Session = Depends(get_db)):
+    signals = build_signals(db, account_id)
+    return assess_risk(account_id=account_id, signals=signals)
