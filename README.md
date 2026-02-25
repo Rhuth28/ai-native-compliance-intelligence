@@ -27,5 +27,6 @@ False positive amplification from the AI, model drift, policy changes, and accum
 - SQLite persistence
 - Transaction signals
 - Risk guardrails for risk assessment (deterministic)
+- RAG for policy retrieval and citation for each created case
 
 
