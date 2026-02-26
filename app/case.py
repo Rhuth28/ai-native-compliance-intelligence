@@ -7,16 +7,19 @@ This builds an on-demand case that:
 
 # import dependencies
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from .models import Event
 from .signals import build_signals
 from .risk import assess_risk
+from .signals import LOOKBACK_DAYS  # reuse LOOKBACK_DAYS constant of 30
 
 
 # Define a function that retrives the events for the case builder
 #For each account, using lookback window as logic, querying the db
-def fetch_events_for_case(db: Session, account_id: str) -> List[Event]:
+def fetch_events_for_case(db: Session, account_id: str) -> List[Event]:   # fetch the event within the last lookback window
+    cutoff = datetime.now(timezone.utc) - timedelta(days=LOOKBACK_DAYS)
+
     return(
         db.query(Event)
         .filter(Event.account_id == account_id)
