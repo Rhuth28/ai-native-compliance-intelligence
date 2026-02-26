@@ -101,7 +101,7 @@ def build_signals(db: Session, account_id: str) -> List[Dict[str, Any]]:
                         "why_it_fired": f"First transfer to recipient '{recipient}' and amount {amount} is greater than threshold {LARGE_TXN_THRESHOLD} {currency}",
                         "evidence_event_ids": [e.id],  
                      })
-                known_recipients.add(recipient)
+                known_recipients.add(recipient)  #Track the known recipient only once
 
 
             # Fire signal for profile change + large transfers
@@ -114,7 +114,7 @@ def build_signals(db: Session, account_id: str) -> List[Dict[str, Any]]:
                         "why_it_fired": f"A profile change occured within {PROFILE_CHANGE_WINDOW_HOURS}hrs before a transaction.",
                         "evidence_event_ids": [last_pc_event_id, e.id],  
                      })
-                known_recipients.add(recipient)
+
 
 
     # Cleanup to remove duplicates, just in case
