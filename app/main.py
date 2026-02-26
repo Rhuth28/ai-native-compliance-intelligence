@@ -143,7 +143,7 @@ def log_case_action(payload: ActionCreate, db: Session = Depends(get_db)):
         account_id=payload.account_id,
         action=payload.action,
         reason=payload.reason,
-        metadata=payload.metadata,
+        extra_data=payload.extra_data,
     )
     db.add(row)
     db.commit()

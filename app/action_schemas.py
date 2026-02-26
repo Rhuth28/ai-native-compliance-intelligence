@@ -8,4 +8,4 @@ class ActionCreate(BaseModel):
     account_id: str
     action: ActionType
     reason: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    extra_data: Optional[Dict[str, Any]] = None

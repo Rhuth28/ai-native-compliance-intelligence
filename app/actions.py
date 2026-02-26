@@ -16,4 +16,4 @@ class CaseAction(Base):
     action = Column(String)                       # APPROVE | OVERRIDE | REQUEST_INFO | ESCALATE
     reason = Column(String, nullable=True)        # reason for action, especially if it's OVERRIDE
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    metadata = Column(JSON, nullable=True)        # e.g the previous routed_path
+    extra_data = Column(JSON, nullable=True)        # e.g the previous routed_path
