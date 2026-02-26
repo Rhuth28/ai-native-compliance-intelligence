@@ -4,7 +4,7 @@ Database models which defines how events are stored.
 
 # Import dependencies
 from sqlalchemy import Column, Integer, String, DateTime, JSON
-from datetime import datetime
+from datetime import datetime, timezone
 from .database import Base
 
 
@@ -19,5 +19,5 @@ class Event(Base):
     id = Column(Integer, primary_key=True, index=True)
     event_type = Column(String, index=True)
     account_id = Column(String, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     payload = Column(JSON)  # Full raw event payload as JSON
