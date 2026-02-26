@@ -20,6 +20,8 @@ from .rag_schemas import PolicyContextOut
 from .ai_reasoning import generate_ai_reasoning
 from .router import apply_guardrails
 from .sla import assign_sla
+from .actions import CaseAction
+from .action_schemas import ActionCreate
 
 
 
@@ -127,3 +129,24 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
         "ai_decision": routed,
         "sla": sla,
     }
+
+
+#Endpoint for analyst action
+@app.post("/cases/actions")
+def log_case_action(payload: ActionCreate, db: Session = Depends(get_db)):
+    # Simple guardrail---- overrides must have a reason
+    if payload.action == "OVERRIDE" and not payload.reason:
+        return {"error": "OVERRIDE requires a reason"}
+
+    row = CaseAction(
+        case_id=payload.case_id,
+        account_id=payload.account_id,
+        action=payload.action,
+        reason=payload.reason,
+        metadata=payload.metadata,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+
+    return {"message": "Action logged", "action_id": row.id}
