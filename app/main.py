@@ -19,6 +19,7 @@ from .rag import build_policy_query_from_case, retrieve_policy_snippets
 from .rag_schemas import PolicyContextOut
 from .ai_reasoning import generate_ai_reasoning
 from .router import apply_guardrails
+from .sla import assign_sla
 
 
 
@@ -114,10 +115,15 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
     # guardrails router
     risk_band = case_obj.get("risk_assessment", {}).get("risk_band", "UNKNOWN")
     routed = apply_guardrails(ai_out, risk_band=risk_band)
+    # attach SLA to routed path
+    case_created_at = case_obj.get("created_at")
+    routed_path = routed.get("routed_path", "REVIEW")
+    sla = assign_sla(created_at=case_created_at, routed_path=routed_path)
 
     return {
         "account_id": account_id,
         "query": query,
         "policy_snippets": policy_snippets,
         "ai_decision": routed,
+        "sla": sla,
     }
