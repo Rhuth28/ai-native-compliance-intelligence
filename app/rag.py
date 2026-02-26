@@ -16,6 +16,8 @@ from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
+from collections import defaultdict
+
 
 
 
@@ -60,8 +62,16 @@ def ingest_policies() -> None:
 
     # Add source and chunk_id as metadata for citations (source + chunk_id)
     # 'source'is already retrieved from DirectoryLoader in doc.metadata
-    for i, d in enumerate(chunks):
-        d.metadata["chunk_id"] = i
+    per_file_counter = defaultdict(int)    #Track chunk counters per source file so that the chunk IDs are stable per file
+    for d in chunks:
+        source_path = str(d.metadata.get("source", "unknown"))
+        source_file = source_path.split("/")[-1].split("\\")[-1]
+
+        idx = per_file_counter[source_file]
+        per_file_counter[source_file] += 1
+
+        d.metadata["chunk_id"] = f"{source_file}#chunk_{idx}"
+        d.metadata["source_file"] = source_file
 
 
     #----------EMBEDDING------------
@@ -111,7 +121,7 @@ def retrieve_policy_snippets(query: str, top_k: int = 3) -> List[Dict[str, Any]]
     results: List[Dict[str, Any]] = []
     for d in docs:
         source = str(d.metadata.get("source", "unknown")).split("/")[-1].split("\\")[-1]
-        chunk_id = int(d.metadata.get("chunk_id", -1))
+        chunk_id = str(d.metadata.get("chunk_id", "unknown"))   #chunk_id is now a stable string and not being casted
 
         results.append({
             "source": source,
