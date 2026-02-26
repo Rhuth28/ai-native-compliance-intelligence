@@ -1,6 +1,5 @@
 """
-Pydantic schemas to validate all requests 
-and ensure they have the required structure.
+Pydantic schemas to validate all requests and ensure they have the required structure.
 """
 
 from pydantic import BaseModel

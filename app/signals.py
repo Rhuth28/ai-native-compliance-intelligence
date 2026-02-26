@@ -6,7 +6,7 @@ Signal extraction engine. The goal is:
 
 
 # Import dependencies
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Set, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -26,7 +26,7 @@ def _safe_get (payload: Dict [str, Any], key: str, default = None):
 
 # Create function to fetch events from the db for an account within LOOKBACK_DAYS, using created_at as basis
 def fetch_recent_events(db: Session, account_id: str) -> List[Event]:
-    cutoff = datetime.utcnow() - timedelta(days=LOOKBACK_DAYS)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=LOOKBACK_DAYS)
     return (
         db.query(Event)
         .filter(Event.account_id == account_id)

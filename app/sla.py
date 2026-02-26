@@ -7,7 +7,7 @@ What this does is:
 """
 
 
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any
 
 
@@ -25,7 +25,7 @@ DUE_SOON_HOURS = 2  #set default to 2 hours
 
 #SLA fields for case: sla due at and sla status
 def assign_sla(created_at: datetime, routed_path: str) -> Dict[str, Any]:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # MONITOR: no strict  SLA
     if routed_path == "MONITOR":
