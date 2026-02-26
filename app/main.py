@@ -22,6 +22,7 @@ from .router import apply_guardrails
 from .sla import assign_sla
 from .actions import CaseAction
 from .action_schemas import ActionCreate
+from datetime import datetime, timezone
 
 
 
@@ -117,6 +118,24 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
     # guardrails router
     risk_band = case_obj.get("risk_assessment", {}).get("risk_band", "UNKNOWN")
     routed = apply_guardrails(ai_out, risk_band=risk_band)
+
+    # auto log the case for audit trail as proof of what the AI did
+    case_id = f"CASE-{account_id}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    auto_action = CaseAction(
+    case_id=case_id,
+    account_id=account_id,
+    action="AUTO_ROUTED",
+    reason="System auto-routing based on AI decision",
+    extra_data={  # use whatever your column is called: extra_data / details
+        "workflow_path": routed.get("workflow_path"),
+        "routed_path": routed.get("routed_path"),
+        "confidence": routed.get("confidence"),
+        "evidence_event_ids": routed.get("evidence_event_ids", []),
+            },
+        )
+    db.add(auto_action)
+    db.commit()
+
     # attach SLA to routed path
     case_created_at = case_obj.get("created_at")
     routed_path = routed.get("routed_path", "REVIEW")
@@ -127,6 +146,8 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
         "query": query,
         "policy_snippets": policy_snippets,
         "ai_decision": routed,
+        "case_id": case_id,
+        "account_id": account_id,
         "sla": sla,
     }
 
