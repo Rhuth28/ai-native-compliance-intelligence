@@ -17,6 +17,8 @@ from .risk_schemas import RiskOut
 from .case import build_case
 from .rag import build_policy_query_from_case, retrieve_policy_snippets
 from .rag_schemas import PolicyContextOut
+from .ai_reasoning import generate_ai_reasoning
+from .router import apply_guardrails
 
 
 
@@ -87,3 +89,35 @@ def get_policy_context(account_id: str, db: Session = Depends(get_db)):
     snippets = retrieve_policy_snippets(query=query, top_k=3)
 
     return {"query": query, "top_k": 3, "snippets": snippets}
+
+
+
+# Endpoint for ai decisioning
+@app.get("/ai_decision/{account_id}")
+def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
+    """
+    This endpoint:
+    - Builds case
+    - Retrieves policy snippets (RAG)
+    - Asks AI for structured reasoning + workflow path
+    - Applies guardrails to produce a final routed path
+    """
+    case_obj = build_case(db, account_id)
+
+    # retrieve the policy context
+    query = build_policy_query_from_case(case_obj)
+    policy_snippets = retrieve_policy_snippets(query=query, top_k=3)
+
+    # AI reasoning
+    ai_out = generate_ai_reasoning(case_obj=case_obj, policy_snippets=policy_snippets)
+
+    # guardrails router
+    risk_band = case_obj.get("risk_assessment", {}).get("risk_band", "UNKNOWN")
+    routed = apply_guardrails(ai_out, risk_band=risk_band)
+
+    return {
+        "account_id": account_id,
+        "query": query,
+        "policy_snippets": policy_snippets,
+        "ai_decision": routed,
+    }
