@@ -35,6 +35,7 @@ if st.button("Generate Case"):
     # -----------------------------
     decision = data["ai_decision"]
     sla = data["sla"]
+    case_id = data["case_id"]
 
     col1, col2 = st.columns(2)
 

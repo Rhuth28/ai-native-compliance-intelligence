@@ -183,7 +183,7 @@ def log_case_action(payload: ActionCreate, db: Session = Depends(get_db)):
         **ai_context,  # keep all AI decision data
         "human_action": payload.action,
         "human_reason": payload.reason,
-        "previous_routed_path": ai_context.get("ai_routed_path"),
+        "previous_routed_path": ai_context.get("routed_path") or ai_context.get("workflow_path"),  #get the actual path of the caseid
         "human_final_path": payload.extra_data.get("override_to_path") if payload.extra_data else None,
     }
 
