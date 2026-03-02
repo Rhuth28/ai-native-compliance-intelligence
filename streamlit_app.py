@@ -9,6 +9,11 @@ st.set_page_config(page_title="AI-Native Compliance Demo", layout="wide")
 st.title("🧠 AI-Native Compliance Case Engine")
 
 account_id = st.text_input("Enter Account ID", value="ACC123")
+
+# Keep the latest case response across reruns
+if "case_data" not in st.session_state:
+    st.session_state.case_data = None
+    
 if st.button("Generate Case"):
     with st.spinner("Generating case..."):
         try:
@@ -89,7 +94,7 @@ if st.button("Generate Case"):
 
     reason = ""
     if st.button("Submit Action"):
-        
+
     # Guardrail: OVERRIDE must have a reason
         if action == "OVERRIDE" and not reason.strip():
             st.error("OVERRIDE requires a reason.")

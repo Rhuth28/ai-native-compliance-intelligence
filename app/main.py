@@ -23,6 +23,8 @@ from .sla import assign_sla
 from .actions import CaseAction
 from .action_schemas import ActionCreate
 from datetime import datetime, timezone
+from .feedback import get_feedback_summary
+from .feedback_schemas import FeedbackSummaryOut
 
 
 
@@ -120,7 +122,7 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
     risk_band = case_obj.get("risk_assessment", {}).get("risk_band", "UNKNOWN")
     routed = apply_guardrails(ai_out, risk_band=risk_band)
 
-    # reconcile dterministic guardrail confidence vs AI confidence
+    # reconcile dterministic confidence vs AI confidence
     det_conf = float(case_obj.get("risk_assessment", {}).get("confidence", 0.0))
     ai_conf = float(routed.get("confidence", 0.0))
 
@@ -131,6 +133,7 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
 
     # auto log the case for audit trail as proof of what the AI did
     case_id = f"CASE-{account_id}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+
     auto_action = CaseAction(
     case_id=case_id,
     account_id=account_id,
@@ -181,6 +184,7 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
 #Endpoint for analyst action
 @app.post("/cases/actions")
 def log_case_action(payload: ActionCreate, db: Session = Depends(get_db)):
+
     # Simple guardrail---- overrides must have a reason
     if payload.action == "OVERRIDE" and not (payload.reason and payload.reason.strip()):
         raise HTTPException(
@@ -223,3 +227,16 @@ def log_case_action(payload: ActionCreate, db: Session = Depends(get_db)):
     db.refresh(row)
 
     return {"message": "Action logged", "action_id": row.id}
+
+# Feedback loop summary — surfaces AI override patterns and signal drift for model improvement
+@app.get("/feedback/summary", response_model=FeedbackSummaryOut)
+def feedback_summary(db: Session = Depends(get_db)):
+    """
+    Reads analyst override history and returns:
+    - Overall override rate
+    - AI path - human path override patterns
+    - Per-signal override rates (flags candidates for weight retuning)
+    - Confidence gap summary (flags det vs AI misalignment)
+    - Auto-generated recommendation if thresholds are breached
+    """
+    return get_feedback_summary(db)
