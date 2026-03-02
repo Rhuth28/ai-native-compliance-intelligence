@@ -4,7 +4,7 @@ Implements the Event Intake Layer.
 """
 
 # Import dependencies
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from .database import engine, SessionLocal, Base
 from .models import Event
@@ -23,6 +23,7 @@ from .sla import assign_sla
 from .actions import CaseAction
 from .action_schemas import ActionCreate
 from datetime import datetime, timezone
+
 
 
 
@@ -119,6 +120,15 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
     risk_band = case_obj.get("risk_assessment", {}).get("risk_band", "UNKNOWN")
     routed = apply_guardrails(ai_out, risk_band=risk_band)
 
+    # reconcile dterministic guardrail confidence vs AI confidence
+    det_conf = float(case_obj.get("risk_assessment", {}).get("confidence", 0.0))
+    ai_conf = float(routed.get("confidence", 0.0))
+
+    confidence_gap = round(abs(det_conf - ai_conf), 2)
+
+    # final confidence
+    final_confidence = round(min(det_conf, ai_conf), 2)
+
     # auto log the case for audit trail as proof of what the AI did
     case_id = f"CASE-{account_id}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
     auto_action = CaseAction(
@@ -138,6 +148,10 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
     "risk_band": case_obj.get("risk_assessment", {}).get("risk_band"),
     "risk_score": case_obj.get("risk_assessment", {}).get("risk_score"),
     "fired_signals": case_obj.get("risk_assessment", {}).get("fired_signals", []),
+    "deterministic_confidence": det_conf,
+    "ai_confidence": ai_conf,
+    "final_confidence": final_confidence,
+    "confidence_gap": confidence_gap,
             },
         )
     db.add(auto_action)
@@ -154,8 +168,13 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
         "policy_snippets": policy_snippets,
         "ai_decision": routed,
         "case_id": case_id,
-        "account_id": account_id,
         "sla": sla,
+        "confidence": {
+        "deterministic_confidence": det_conf,
+        "ai_confidence": ai_conf,
+        "final_confidence": final_confidence,
+        "confidence_gap": confidence_gap,
+        },
     }
 
 
@@ -163,8 +182,11 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
 @app.post("/cases/actions")
 def log_case_action(payload: ActionCreate, db: Session = Depends(get_db)):
     # Simple guardrail---- overrides must have a reason
-    if payload.action == "OVERRIDE" and not payload.reason:
-        return {"error": "OVERRIDE requires a reason"}
+    if payload.action == "OVERRIDE" and not (payload.reason and payload.reason.strip()):
+        raise HTTPException(
+            status_code=422,
+            detail="OVERRIDE requires a reason"
+        )
 
       # Find the most recent AI routing for this case
     latest_ai = (

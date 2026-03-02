@@ -23,6 +23,7 @@ def fetch_events_for_case(db: Session, account_id: str) -> List[Event]:   # fetc
     return(
         db.query(Event)
         .filter(Event.account_id == account_id)
+        .filter(Event.created_at >= cutoff)  #for lookback days
         .order_by(Event.created_at.asc())
         .all()
     )
@@ -46,9 +47,9 @@ def build_case(db: Session, account_id: str) -> Dict[str, any]:
 
     #JSON case object
     case_object = {
-        "case_id": f"CASE-{account_id}-{int(datetime.utcnow().timestamp())}",
+        "case_id": f"CASE-{account_id}-{int(datetime.now(timezone.utc).timestamp())}",
         "account_id": account_id,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "timeline": timeline,
         "signals": signals,
         "risk_assessment": risk,
