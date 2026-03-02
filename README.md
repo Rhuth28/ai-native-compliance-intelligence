@@ -1,7 +1,7 @@
 # AI-Native Compliance Intelligence Engine
 
 ## Overview
-A prototype compliance engine that ingests financial events and stores them for behavioral risk analysis. It replaces traditional, rule-based alerting with a full investigation-ready case pipeline: ingesting raw account events, extracting behavioural signals like large transactions, profile change and new login, scoring risk deterministically, retrieving relevant policy via RAG, and generating structured AI reasoning with an explicit workflow path recommendation with SLA.
+A prototype compliance engine that ingests financial events and stores them for behavioral risk analysis. It replaces traditional, rule-based alerting with a full investigation-ready case pipeline: ingesting raw account events, extracting behavioural signals like large transactions, profile change and new login, scoring risk deterministically, retrieving relevant policy via RAG, generating structured AI reasoning with an explicit workflow path recommendation with SLA and surfaces analyst override patterns to guide model improvement.
 
 Every AI decision is bounded by hard guardrails, grounded in evidence, and logged to a full audit trail.
 
@@ -21,10 +21,10 @@ Raw Events → Signal Extraction → Risk Scoring → Case Builder
 
 
 ## How It Works
-#### Event Intake
+#### 1. Event Intake
 Raw financial events (device_login, profile_change, transaction_posted) are ingested and persisted. Each event stores a full JSON payload for traceability.
 
-#### Signal Extraction
+#### 2. Signal Extraction
 Events within a 30-day lookback window are scanned for behavioural signals:
 
 - NEW_DEVICE_LOGIN — login from a device not seen in 30 days
@@ -34,7 +34,7 @@ Events within a 30-day lookback window are scanned for behavioural signals:
 - PROFILE_CHANGE_AND_TRANSFER_24HR — profile change followed by a transaction within 24 hours
 - Each signal includes evidence_event_ids so analysts can verify what triggered it.
 
-#### Risk Scoring (Deterministic)
+#### 3. Risk Scoring (Deterministic)
 Signals are weighted and summed into a risk score with a band:
 
 - LOW: 0–39
@@ -42,14 +42,14 @@ Signals are weighted and summed into a risk score with a band:
 - HIGH: 70+
 A deterministic confidence heuristic (based on score severity and signal count) is computed alongside the score.
 
-#### Case Builder
+#### 4. Case Builder
 Builds a structured, investigation-ready case object per account containing: full event timeline, fired signals, risk assessment, and metadata. Replaces manual alert triage.
 
-#### RAG Policy Retrieval
+#### 5. RAG Policy Retrieval
 - Policy documents (.md / .txt) are chunked, embedded via OpenAI, and stored in a local Chroma vector DB. 
 - Relevant policy snippets are retrieved per case and passed to the AI with source + chunk citations.
 
-#### AI Reasoning Layer
+#### 6. AI Reasoning Layer
 A GPT-4o-mini model receives the case payload and policy snippets and returns a structured JSON response including:
 
 - narrative_summary — plain-language case summary
@@ -61,14 +61,14 @@ A GPT-4o-mini model receives the case payload and policy snippets and returns a 
 - policy_citations — traceable references to policy chunks
 - ai_stop — explicit statement that AI cannot freeze accounts or file regulatory reports
 
-#### Guardrails + Confidence Reconciliation
+#### 7. Guardrails + Confidence Reconciliation
 - Before routing, the system applies deterministic guardrails:
 - AI confidence below 0.65 → force REVIEW
 - Risk band HIGH + AI recommends MONITOR → force REVIEW
 - ESCALATE always requires human confirmation
 - Deterministic confidence and AI confidence are reconciled into a final_confidence (conservative minimum) with a confidence_gap surfaced to analysts.
 
-#### SLA Assignment
+#### 8. SLA Assignment
 Each routed case is assigned a deadline based on workflow path:
 
 - ESCALATE → 2 hours
@@ -77,9 +77,11 @@ Each routed case is assigned a deadline based on workflow path:
 - MONITOR → no SLA
 - SLA status is computed as ON_TRACK, DUE_SOON, or BREACHED.
 
-#### Audit Trail
+#### 9. Audit Trail
 Every AI routing decision is automatically logged to case_actions with full context: routed path, confidence scores, fired signals, policy citations, evidence IDs, and ai_stop. When an analyst acts (approve, override, escalate, request info), their decision is stored alongside the original AI context — building a feedback dataset for future model improvement.
 
+### 10. Feedback Loop
+Analyst override history is aggregated via `GET /feedback/summary`. Surfaces override rate, AI path - human path patterns with example reasons, per-signal override rates (flagging signals that are frequently overridden as candidates for weight retuning), and confidence gap analysis between deterministic and AI scores. Auto-generates a recommendation when override rate exceeds 30% or confidence misalignment is high
 
 ## The human in the loop:
 - The system recommends. Humans decide.
@@ -117,6 +119,7 @@ Every AI routing decision is automatically logged to case_actions with full cont
 6. GET/policy_context/{account_id} (Retrieve relevant policy snippets)
 7. GET/ai_decision/{account_id} (Full AI reasoning + routing + SLA)
 8. POST/cases/actions (Log analyst action on a case)
+9. GET/feedback/summary (Feedback loop — override patterns, signal override rates, confidence gap summary)
 
 
 ## Current Features
@@ -127,5 +130,6 @@ Every AI routing decision is automatically logged to case_actions with full cont
 - RAG for policy retrieval and citation for each created case
 - Routing for each compiled case
 - SLA for analysts
+- Feedback loop summary (override patterns, signal drift, confidence gap analysis)
 
 
