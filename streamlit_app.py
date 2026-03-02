@@ -88,16 +88,27 @@ if st.button("Generate Case"):
     )
 
     reason = ""
-    if action == "OVERRIDE":
-        reason = st.text_area("Override Reason (required)")
-
     if st.button("Submit Action"):
+        
+    # Guardrail: OVERRIDE must have a reason
+        if action == "OVERRIDE" and not reason.strip():
+            st.error("OVERRIDE requires a reason.")
+            st.stop()
+
         payload = {
-            "case_id": data["account_id"], 
-            "account_id": data["account_id"],
-            "action": action,
-            "reason": reason
+        "case_id": case_id,
+        "account_id": data["account_id"],
+        "action": action,
+        "reason": reason,
+        "extra_data": {"override_to_path": "REVIEW"} if action == "OVERRIDE" else {},
         }
 
         r = requests.post(f"{API_BASE}/cases/actions", json=payload)
+
+        if r.status_code != 200:
+            st.error(f"API Error ({r.status_code})")
+            st.code(r.text)
+            st.stop()
+
         st.success("Action Logged")
+        st.json(r.json())
