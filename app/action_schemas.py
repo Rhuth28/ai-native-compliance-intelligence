@@ -9,3 +9,4 @@ class ActionCreate(BaseModel):
     action: ActionType
     reason: Optional[str] = None
     extra_data: Optional[Dict[str, Any]] = None
+    override_to_path: str | None = None    #If human overrides

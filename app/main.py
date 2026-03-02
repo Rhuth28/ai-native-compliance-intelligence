@@ -126,11 +126,18 @@ def get_ai_decision(account_id: str, db: Session = Depends(get_db)):
     account_id=account_id,
     action="AUTO_ROUTED",
     reason="System auto-routing based on AI decision",
-    extra_data={  # use whatever your column is called: extra_data / details
-        "workflow_path": routed.get("workflow_path"),
-        "routed_path": routed.get("routed_path"),
-        "confidence": routed.get("confidence"),
-        "evidence_event_ids": routed.get("evidence_event_ids", []),
+    extra_data={
+    # What the AI outputed/decided
+    "ai_routed_path": routed.get("routed_path"),
+    "ai_workflow_path": routed.get("workflow_path"),
+    "ai_confidence": routed.get("confidence"),
+    "ai_stop": routed.get("ai_stop"),
+    "policy_citations": routed.get("policy_citations", []),
+    "evidence_event_ids": routed.get("evidence_event_ids", []),
+    # why the AI decided its route
+    "risk_band": case_obj.get("risk_assessment", {}).get("risk_band"),
+    "risk_score": case_obj.get("risk_assessment", {}).get("risk_score"),
+    "fired_signals": case_obj.get("risk_assessment", {}).get("fired_signals", []),
             },
         )
     db.add(auto_action)
@@ -159,13 +166,36 @@ def log_case_action(payload: ActionCreate, db: Session = Depends(get_db)):
     if payload.action == "OVERRIDE" and not payload.reason:
         return {"error": "OVERRIDE requires a reason"}
 
+      # Find the most recent AI routing for this case
+    latest_ai = (
+        db.query(CaseAction)
+        .filter(CaseAction.case_id == payload.case_id)
+        .filter(CaseAction.action == "AUTO_ROUTED")
+        .order_by(CaseAction.created_at.desc())
+        .first()
+    )
+
+    # Get previous AI context if it exists
+    ai_context = latest_ai.extra_data if latest_ai and latest_ai.extra_data else {}
+
+  # Build model feedback record
+    feedback_context = {
+        **ai_context,  # keep all AI decision data
+        "human_action": payload.action,
+        "human_reason": payload.reason,
+        "previous_routed_path": ai_context.get("ai_routed_path"),
+        "human_final_path": payload.extra_data.get("override_to_path") if payload.extra_data else None,
+    }
+
     row = CaseAction(
         case_id=payload.case_id,
         account_id=payload.account_id,
         action=payload.action,
         reason=payload.reason,
-        extra_data=payload.extra_data,
+        extra_data=feedback_context,
     )
+
+
     db.add(row)
     db.commit()
     db.refresh(row)
